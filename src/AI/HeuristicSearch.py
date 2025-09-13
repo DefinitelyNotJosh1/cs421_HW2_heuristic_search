@@ -11,6 +11,31 @@ from AIPlayerUtils import *
 
 
 ##
+# NODE
+# Description: A node in the search tree; contains a game state, a move, the parent state,
+# and the utility of the state.
+##
+class Node:
+
+    ## __init__
+    # 
+    # Description: Creates a new node
+    #
+    # Parameters:
+    #   parent - the parent node
+    #   move - the move that led to this state
+    #   gameState - the game state
+    #   utility - the utility of the state
+    ##
+    def __init__(self, parent, move, gameState, utility):
+        self.parent = parent
+        self.move = move
+        self.gameState = gameState
+        self.utility = utility
+
+
+
+##
 #AIPlayer
 #Description: The responsbility of this class is to interact with the game by
 #deciding a valid move based on a given game state. This class has methods that
@@ -30,6 +55,7 @@ class AIPlayer(Player):
     ##
     def __init__(self, inputPlayerId):
         super(AIPlayer,self).__init__(inputPlayerId, "Search")
+        self.playerId = inputPlayerId
 
 
     ##
@@ -44,6 +70,13 @@ class AIPlayer(Player):
     # Return: The utility of the state
     #
     def utility(self, gameState):
+        # Some ideas: from Josh:
+        # Food diffence - this shold absolutely play a decently large role.
+        # enemy ants - if the enemy has lots of ants and we don't, that's bad.
+        # worker ant distance from food - if worker isn't carrying food and close to food, that's good.
+        # If worker ant is carrying food and close to a hill/tunnel, that's good.
+        # If queen is within the attack range of an enemy ant, that's bad.
+        # 
         return 0
 
 
@@ -59,7 +92,20 @@ class AIPlayer(Player):
     # Return: The state with the highest utility
     #
     def bestMove(self, nodes):
-        return nodes[0]
+        # Initialize best node with the first node's utility
+        if nodes[0].utility is None:
+            nodes[0].utility = self.utility(nodes[0].gameState)
+        
+        bestNode = nodes[0]
+
+        # Iterate through nodes to find the one with the highest utility
+        for node in nodes:
+            if node.utility is None:
+                node.utility = self.utility(node.gameState)
+            if node.utility > bestNode.utility:
+                bestNode = node
+        
+        return bestNode
 
 
     ##
@@ -131,7 +177,8 @@ class AIPlayer(Player):
         # list all gamestate objects that will result from making each legal move
         nodes = []
         for move in moves:
-            nodes.append(getNextState(currentState, move))
+            newNode = Node(currentState, move, getNextState(currentState, move), None)
+            nodes.append(newNode)
 
         # find the best move
         bestNode = self.bestMove(nodes)
