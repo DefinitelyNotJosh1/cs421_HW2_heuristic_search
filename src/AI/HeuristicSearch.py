@@ -87,12 +87,15 @@ class AIPlayer(Player):
         utility -= (gameState.inventories[enemy].foodCount / 11) * 0.3                       # enemy more food /= more win; 0.3weight
 
         # Soldier Weights
-        utility += (len(getAntList(gameState, me, (DRONE,SOLDIER,R_SOLDIER))) / 20) * 0.2    # more soldiers = more win; 0.2weight
+        utility += (len(getAntList(gameState, me, (SOLDIER,R_SOLDIER))) / 20) * 0.2          # more soldiers = more win; 0.2weight
         utility += (len(getAntList(gameState, enemy, (DRONE,SOLDIER,R_SOLDIER))) / 20) * 0.2 # enemy more soldiers = more win; 0.2weight
 
         # Queen Weights
         utility += (max(0, getAntList(gameState, me, (QUEEN,))[0].health -
-                        getAntList(gameState, enemy, (QUEEN,))[0].health) / 10) * 0.2        # ; 0.2weight
+                        getAntList(gameState, enemy, (QUEEN,))[0].health) / 10) * 0.2        # Queen dying or Enemy Queen Dying = Good and Bad; 0.2weight
+
+        # Anthill Weights
+        utility -= (getCurrPlayerInventory(gameState).getAnthill().captureHealth / 3) * 0.3  # Anthill dying = bad; 0.2weight
 
         # ChatGPT
         # Worker Weights
@@ -111,7 +114,7 @@ class AIPlayer(Player):
                                   [stepsToReach(gameState, w.coords, anthill.coords)])
                 workerScore += 10 - closestDrop   # closer to drop site is better
             else:
-                # If not carrying, prioritize closest food
+                # If not carrying, prioritize the closest food
                 closestFood = min([stepsToReach(gameState, w.coords, f.coords) for f in foodList])
                 workerScore += 5 - closestFood    # closer to food is better
 
@@ -134,7 +137,7 @@ class AIPlayer(Player):
     # Return: The state with the highest utility
     #
     def bestMove(self, nodes):
-        # Initialize best node with the first node's utility
+        # Initialize the best node with the first node's utility
         if nodes[0].utility is None:
             nodes[0].utility = self.utility(nodes[0].gameState)
 
