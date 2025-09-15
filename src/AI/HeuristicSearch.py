@@ -18,7 +18,7 @@ from AIPlayerUtils import *
 class Node:
 
     ## __init__
-    # 
+    #
     # Description: Creates a new node
     #
     # Parameters:
@@ -37,7 +37,7 @@ class Node:
 
 ##
 #AIPlayer
-#Description: The responsbility of this class is to interact with the game by
+#Description: The responsibility of this class is to interact with the game by
 #deciding a valid move based on a given game state. This class has methods that
 #will be implemented by students in Dr. Nuxoll's AI course.
 #
@@ -71,13 +71,55 @@ class AIPlayer(Player):
     #
     def utility(self, gameState):
         # Some ideas: from Josh:
-        # Food diffence - this shold absolutely play a decently large role.
-        # enemy ants - if the enemy has lots of ants and we don't, that's bad.
+        # Food difference - this should absolutely play a decently large role.                          DONE
+        # enemy ants - if the enemy has lots of ants and we don't, that's bad.                          DONE
         # worker ant distance from food - if worker isn't carrying food and close to food, that's good.
         # If worker ant is carrying food and close to a hill/tunnel, that's good.
         # If queen is within the attack range of an enemy ant, that's bad.
-        # 
-        return 0
+        #
+        # Constants
+        me = self.playerId
+        enemy = 1 if me == 0 else 0
+        utility = 0.500                                                                      # base
+
+        # Food Weights
+        utility += (gameState.inventories[me].foodCount / 11) * 0.3                          # more food = more win; 0.3weight
+        utility -= (gameState.inventories[enemy].foodCount / 11) * 0.3                       # enemy more food /= more win; 0.3weight
+
+        # Soldier Weights
+        utility += (len(getAntList(gameState, me, (DRONE,SOLDIER,R_SOLDIER))) / 20) * 0.2    # more soldiers = more win; 0.2weight
+        utility += (len(getAntList(gameState, enemy, (DRONE,SOLDIER,R_SOLDIER))) / 20) * 0.2 # enemy more soldiers = more win; 0.2weight
+
+        # Queen Weights
+        utility += (max(0, getAntList(gameState, me, (QUEEN,))[0].health -
+                        getAntList(gameState, enemy, (QUEEN,))[0].health) / 10) * 0.2        # ; 0.2weight
+
+        # ChatGPT
+        # Worker Weights
+        workerScore = 0
+        # Get my workers
+        workers = getAntList(gameState, gameState.whoseTurn, (WORKER,))
+        myInv = getCurrPlayerInventory(gameState)
+        tunnels = myInv.getTunnels()
+        anthill = myInv.getAnthill()
+        foodList = getConstrList(gameState, None, (FOOD,))
+
+        for w in workers:
+            # If carrying food, prioritize returning to tunnel or anthill
+            if w.carrying:
+                closestDrop = min([stepsToReach(gameState, w.coords, t.coords) for t in tunnels] +
+                                  [stepsToReach(gameState, w.coords, anthill.coords)])
+                workerScore += 10 - closestDrop   # closer to drop site is better
+            else:
+                # If not carrying, prioritize closest food
+                closestFood = min([stepsToReach(gameState, w.coords, f.coords) for f in foodList])
+                workerScore += 5 - closestFood    # closer to food is better
+
+        utility += workerScore * 0.2
+        # Clamp result to [0,1]
+        utility = max(0.0, min(1.0, utility))
+
+        return utility
 
 
     ##
@@ -95,7 +137,7 @@ class AIPlayer(Player):
         # Initialize best node with the first node's utility
         if nodes[0].utility is None:
             nodes[0].utility = self.utility(nodes[0].gameState)
-        
+
         bestNode = nodes[0]
 
         # Iterate through nodes to find the one with the highest utility
@@ -104,7 +146,7 @@ class AIPlayer(Player):
                 node.utility = self.utility(node.gameState)
             if node.utility > bestNode.utility:
                 bestNode = node
-        
+
         return bestNode
 
 
@@ -161,7 +203,7 @@ class AIPlayer(Player):
             return moves
         else:
             return [(0, 0)]
-    
+
     ##
     #getMove
     #Description: Gets the next move from the Player.
@@ -184,7 +226,7 @@ class AIPlayer(Player):
         bestNode = self.bestMove(nodes)
 
         return bestNode.move
-    
+
     ##
     #getAttack
     #Description: Gets the attack to be made from the Player
