@@ -148,15 +148,13 @@ class AIPlayer(Player):
     #
     def bestMove(self, nodes):
         # Initialize the best node with the first node's utility
-        bestNode = nodes[0]
         bestNodes = []
 
         # Iterate through nodes to find the one with the highest utility
         for node in nodes:
             if node.evaluation is None:
                 node.evaluation = self.utility(node.gameState) + node.depth
-            if node.evaluation - node.depth >= bestNode.evaluation - bestNode.depth:
-                bestNode = node
+            if node.evaluation - node.depth >= node[0].evaluation - bestNode.depth:
                 bestNodes.append(node)
 
         return random.choice(bestNodes) if len(bestNodes) != 0 else nodes[0]
