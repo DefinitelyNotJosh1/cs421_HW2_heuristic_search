@@ -85,55 +85,71 @@ class AIPlayer(Player):
         # Constants
         me = self.playerId
         enemy = 1 if me == 0 else 0
-        utility = 0.500                                                                      # base
+        utility = 0.500                         # base
+        myInv = getCurrPlayerInventory(gameState)
+        tunnels = myInv.getTunnels()
+        anthill = myInv.getAnthill()
+        foodList = getConstrList(gameState, None, (FOOD,))
 
         # Food Weights
         utility += (gameState.inventories[me].foodCount / 11) * 0.3                          # more food = more win; 0.3weight
-        utility -= (gameState.inventories[enemy].foodCount / 11) * 0.3                       # enemy more food /= more win; 0.3weight
+        # utility -= (gameState.inventories[enemy].foodCount / 11) * 0.3                       # enemy more food /= more win; 0.3weight
 
         # Soldier Weights
-        utility += (len(getAntList(gameState, me, (SOLDIER,R_SOLDIER))) / 20) * 0.2          # more soldiers = more win; 0.2weight
-        utility -= (len(getAntList(gameState, enemy, (DRONE,SOLDIER,R_SOLDIER))) / 20) * 0.2 # enemy more soldiers = more win; 0.2weight
+        utility += (len(getAntList(gameState, me, (SOLDIER,R_SOLDIER))) / 10) * 0.2          # more soldiers = more win; 0.2weight
+        # utility -= (len(getAntList(gameState, enemy, (DRONE,SOLDIER,R_SOLDIER))) / 10) * 0.2 # enemy more soldiers = more lose; 0.2weight
 
-        # Worker Weights
-        # utility += (len(getAntList(gameState, me, (WORKER,))) / 3) * 0.2                     # more soldiers = more win; 0.2weight
-        # utility -= (len(getAntList(gameState, enemy, (WORKER,))) / 3) * 0.2                  # enemy more soldiers = more win; 0.2weight
+        # Worker Health Weights
+        workers = getAntList(gameState, me, (WORKER,))
+        if workers:  # Only if workers exist
+            utility += (len(workers) / 2) * 0.2
 
+            worker_health = sum(w.health for w in workers)
+            utility += (worker_health / 3.0) / len(workers) * 0.3
+            utility -= (len(workers) / 2) * 0.2
 
-        # Queen Weights
+        # # Queen Weights
         my_queens = getAntList(gameState, me, (QUEEN,))
         enemy_queens = getAntList(gameState, enemy, (QUEEN,))
-
         if my_queens and enemy_queens:  # Both queens exist
-            utility += (max(0, my_queens[0].health - enemy_queens[0].health) / 10) * 0.2     # Protect the President/Queen; 0.2weight
+            utility += ((my_queens[0].health - enemy_queens[0].health) / 10) * 0.2     # Protect the President/Queen; 0.2weight
+            # utility += (my_queens[0].health / 10) * 0.2
 
         # Anthill Weights
         if gameState.inventories[enemy].getAnthill() or getCurrPlayerInventory(gameState).getAnthill():
             utility -= (gameState.inventories[enemy].getAnthill().captureHealth / 3) * 0.3       # Enemy anthill full health = bad; 0.3weight
-            utility += (getCurrPlayerInventory(gameState).getAnthill().captureHealth / 3) * 0.3  # Anthill alive = good; 0.3weight
+            utility += (anthill.captureHealth / 3) * 0.3  # Anthill alive = good; 0.3weight
 
         # ChatGPT
         # Worker Weights
         workerScore = 0
         # Get my workers
         workers = getAntList(gameState, me, (WORKER,))
-        myInv = getCurrPlayerInventory(gameState)
-        tunnels = myInv.getTunnels()
-        anthill = myInv.getAnthill()
-        foodList = getConstrList(gameState, None, (FOOD,))
 
         for w in workers:
+            # if blocking
+            if my_queens and w.coords == my_queens[0].coords:
+                utility -= 0.3
             # If carrying food, prioritize returning to tunnel or anthill
             if w.carrying:
-                closestDrop = min([stepsToReach(gameState, w.coords, tunnels[0].coords)],
-                                  [stepsToReach(gameState, w.coords, anthill.coords)])
-                workerScore += 10 - closestDrop[0]   # closer to drop site is better
+                closestDrop = min(stepsToReach(gameState, w.coords, tunnels[0].coords),
+                                  stepsToReach(gameState, w.coords, anthill.coords))
+                if closestDrop == 0:
+                    workerScore += 20
+                else:
+                    workerScore += max(0, 10 - closestDrop)   # closer to drop site is better
             else:
                 # If not carrying, prioritize the closest food
                 closestFood = min([stepsToReach(gameState, w.coords, f.coords) for f in foodList])
-                workerScore += 5 - closestFood   # closer to food is better
+                if closestFood == 0:
+                    workerScore += 10
+                else:
+                    workerScore += max(0, 5 - closestFood)   # closer to food is better
 
-        utility += workerScore * 0.3
+        print(f"Base utility: {utility}")
+        print(f"Worker score: {workerScore}")
+        print(f"Final utility before clamp: {utility + workerScore * 0.01}")
+        utility += workerScore * 0.1
         # Clamp result to [0,1]
         utility = max(0.0, min(1.0, utility))
 
@@ -158,7 +174,7 @@ class AIPlayer(Player):
         # Iterate through nodes to find the one with the highest utility
         for node in nodes:
             if node.evaluation is None:
-                node.evaluation = self.utility(node.gameState) + node.depth
+                node.evaluation = self.utility(node.gameState) + node.depth + random.uniform(-0.01, 0.01)   # noise
             if ((node.evaluation - node.depth >= nodes[0].evaluation) -
                     (bestNodes[len(bestNodes) - 1].depth if len(bestNodes) != 0 else nodes[0].evaluation)):
                 bestNodes.append(node)
