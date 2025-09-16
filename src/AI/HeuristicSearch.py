@@ -148,20 +148,13 @@ class AIPlayer(Player):
     #
     def bestMove(self, nodes):
         # Initialize the best node with the first node's utility
-        highestUtil = 0
-        if nodes[0].evaluation is None:
-            utility = self.utility(nodes[0].gameState)
-            nodes[0].evaluation = utility + nodes[0].depth
-            highestUtil = utility
-
         bestNode = nodes[0]
 
         # Iterate through nodes to find the one with the highest utility
         for node in nodes:
             if node.evaluation is None:
                 node.evaluation = self.utility(node.gameState) + node.depth
-            if node.evaluation - node.depth > highestUtil:
-                highestUtil = node.evaluation - node.depth
+            if node.evaluation - node.depth > bestNode.evaluation - bestNode.depth:
                 bestNode = node
 
         return bestNode
@@ -287,3 +280,18 @@ if __name__ == "__main__":
     # move = AI.getMove(gameState)
     # if not isinstance(move, Move):
     #     print(f"ERROR: getMove() did not return a Move. Got: {move}")
+
+print("Beginning bestMove test")
+nodes = []
+for i in range(10):
+    node = Node(None, None, GameState.getBlankState(), 1, None)
+    nodes.append(node)
+    node.evaluation = i / 10 + node.depth
+bestNode = AIPlayer(0).bestMove(nodes)
+
+if bestNode.evaluation == 1.9:
+    print(f"BestMove test passed. Value was {bestNode.evaluation}, expected 1.9")
+else:
+    print(f"BestMove test failed. Value was {bestNode.evaluation}, expected 1.9")
+
+
