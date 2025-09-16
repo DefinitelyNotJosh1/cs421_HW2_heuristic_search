@@ -93,7 +93,7 @@ class AIPlayer(Player):
 
         # Soldier Weights
         utility += (len(getAntList(gameState, me, (SOLDIER,R_SOLDIER))) / 20) * 0.2          # more soldiers = more win; 0.2weight
-        utility += (len(getAntList(gameState, enemy, (DRONE,SOLDIER,R_SOLDIER))) / 20) * 0.2 # enemy more soldiers = more win; 0.2weight
+        utility -= (len(getAntList(gameState, enemy, (DRONE,SOLDIER,R_SOLDIER))) / 20) * 0.2 # enemy more soldiers = more win; 0.2weight
 
         # Queen Weights
         my_queens = getAntList(gameState, me, (QUEEN,))
@@ -102,10 +102,9 @@ class AIPlayer(Player):
         if my_queens and enemy_queens:  # Both queens exist
             utility += (max(0, my_queens[0].health - enemy_queens[0].health) / 10) * 0.2     # Protect the President/Queen; 0.2weight
 
-
         # Anthill Weights
-        utility += (gameState.inventories[enemy].getAnthill().captureHealth / 3) * 0.3       # Attacking Enemy Anthill = bad; 0.3weight
-        utility -= (getCurrPlayerInventory(gameState).getAnthill().captureHealth / 3) * 0.3  # Anthill dying = bad; 0.3weight
+        utility -= (gameState.inventories[enemy].getAnthill().captureHealth / 3) * 0.3       # Attacking Enemy Anthill = bad; 0.3weight
+        utility += (getCurrPlayerInventory(gameState).getAnthill().captureHealth / 3) * 0.3  # Anthill alive = good; 0.3weight
 
         # ChatGPT
         # Worker Weights
@@ -120,13 +119,13 @@ class AIPlayer(Player):
         for w in workers:
             # If carrying food, prioritize returning to tunnel or anthill
             if w.carrying:
-                closestDrop = min([stepsToReach(gameState, w.coords, t.coords) for t in tunnels] +
+                closestDrop = min([stepsToReach(gameState, w.coords, tunnels[0].coords)],
                                   [stepsToReach(gameState, w.coords, anthill.coords)])
-                workerScore += 10 - closestDrop   # closer to drop site is better
+                workerScore += 10 - closestDrop[0]   # closer to drop site is better
             else:
                 # If not carrying, prioritize the closest food
                 closestFood = min([stepsToReach(gameState, w.coords, f.coords) for f in foodList])
-                workerScore += 5 - closestFood    # closer to food is better
+                workerScore += 5 - closestFood   # closer to food is better
 
         utility += workerScore * 0.2
         # Clamp result to [0,1]
