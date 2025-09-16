@@ -95,6 +95,11 @@ class AIPlayer(Player):
         utility += (len(getAntList(gameState, me, (SOLDIER,R_SOLDIER))) / 20) * 0.2          # more soldiers = more win; 0.2weight
         utility -= (len(getAntList(gameState, enemy, (DRONE,SOLDIER,R_SOLDIER))) / 20) * 0.2 # enemy more soldiers = more win; 0.2weight
 
+        # Worker Weights
+        # utility += (len(getAntList(gameState, me, (WORKER,))) / 3) * 0.2                     # more soldiers = more win; 0.2weight
+        # utility -= (len(getAntList(gameState, enemy, (WORKER,))) / 3) * 0.2                  # enemy more soldiers = more win; 0.2weight
+
+
         # Queen Weights
         my_queens = getAntList(gameState, me, (QUEEN,))
         enemy_queens = getAntList(gameState, enemy, (QUEEN,))
@@ -154,7 +159,8 @@ class AIPlayer(Player):
         for node in nodes:
             if node.evaluation is None:
                 node.evaluation = self.utility(node.gameState) + node.depth
-            if node.evaluation - node.depth >= nodes[0].evaluation - bestNode.depth:
+            if ((node.evaluation - node.depth >= nodes[0].evaluation) -
+                    (bestNodes[len(bestNodes) - 1].depth if len(bestNodes) != 0 else nodes[0].evaluation)):
                 bestNodes.append(node)
 
         return random.choice(bestNodes) if len(bestNodes) != 0 else nodes[0]
