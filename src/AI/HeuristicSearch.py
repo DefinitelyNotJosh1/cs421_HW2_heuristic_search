@@ -84,58 +84,106 @@ class AIPlayer(Player):
         #
         # Constants
         me = self.playerId
+        myInv = getCurrPlayerInventory(gameState)
+        enemyInv = getEnemyInv(me, gameState)
         enemy = 1 if me == 0 else 0
-        utility = 0.500                                                                      # base
+        utility = 0.0                                                                   # base
 
-        # Food Weights
-        utility += (gameState.inventories[me].foodCount / 11) * 0.3                          # more food = more win; 0.3weight
-        utility -= (gameState.inventories[enemy].foodCount / 11) * 0.3                       # enemy more food /= more win; 0.3weight
+        # Food Weights - 30% of total utility
+        if myInv.foodCount and enemyInv.foodCount:
+            foodScore = myInv.foodCount / 11 # This is on a scale of 0 - 1 - good, now multiply by multiplier
+            # foodScore -= (gameState.inventories[enemy].foodCount / 11) # ignore enemy food for now - 
+            # in the future do this: start food score at 0.5, divide my food score by 2 and enemy food score by 2,
+            # Add my food score and subtract enemy food score. This keeps everything on a scale of 0 - 1.
+            print(f"Food Score: {foodScore}")
+            utility += foodScore * 0.4
+        # utility += (gameState.inventories[me].foodCount / 11) * 0.3                          # more food = more win; 0.3weight
+        # utility -= (gameState.inventories[enemy].foodCount / 11) * 0.3                       # enemy more food /= more win; 0.3weight
 
-        # Soldier Weights
-        utility += (len(getAntList(gameState, me, (SOLDIER,R_SOLDIER))) / 20) * 0.2          # more soldiers = more win; 0.2weight
-        utility -= (len(getAntList(gameState, enemy, (DRONE,SOLDIER,R_SOLDIER))) / 20) * 0.2 # enemy more soldiers = more win; 0.2weight
+
+        # If we're under attack (aka there are enemy ants on our side of the board, aka less than 4 in y coord)
+        # Max 10% of total utility, not that important
+        attackScore = 0
+        enemyAnts = getAntList(gameState, enemy, (QUEEN, WORKER, DRONE, SOLDIER, R_SOLDIER))
+        attackingAnts = 0
+        if enemyAnts:
+             for ant in enemyAnts:
+                if ant.coords[1] < 4:
+                    attackingAnts += 1
+        
+        print(f"attackScore: {attackScore}")
+        attackScore = ((len(enemyAnts)) - attackingAnts / len(enemyAnts)) # If there isn't a significant number of enemy attacking ants, good
+        utility += min(attackScore * 0.1, 0.1) 
 
         # Worker Weights
         # utility += (len(getAntList(gameState, me, (WORKER,))) / 3) * 0.2                     # more soldiers = more win; 0.2weight
         # utility -= (len(getAntList(gameState, enemy, (WORKER,))) / 3) * 0.2                  # enemy more soldiers = more win; 0.2weight
 
 
-        # Queen Weights
-        my_queens = getAntList(gameState, me, (QUEEN,))
-        enemy_queens = getAntList(gameState, enemy, (QUEEN,))
+        # # Queen Weights
+        # my_queens = getAntList(gameState, me, (QUEEN,))
+        # enemy_queens = getAntList(gameState, enemy, (QUEEN,))
 
-        if my_queens and enemy_queens:  # Both queens exist
-            utility += (max(0, my_queens[0].health - enemy_queens[0].health) / 10) * 0.2     # Protect the President/Queen; 0.2weight
+        # if my_queens and enemy_queens:  # Both queens exist
+        #     utility += (max(0, my_queens[0].health - enemy_queens[0].health) / 10) * 0.2     # Protect the President/Queen; 0.2weight
 
-        # Anthill Weights
-        if gameState.inventories[enemy].getAnthill() or getCurrPlayerInventory(gameState).getAnthill():
-            utility -= (gameState.inventories[enemy].getAnthill().captureHealth / 3) * 0.3       # Enemy anthill full health = bad; 0.3weight
-            utility += (getCurrPlayerInventory(gameState).getAnthill().captureHealth / 3) * 0.3  # Anthill alive = good; 0.3weight
+        # # Anthill Weights
+        # if gameState.inventories[enemy].getAnthill() or getCurrPlayerInventory(gameState).getAnthill():
+        #     utility -= (gameState.inventories[enemy].getAnthill().captureHealth / 3) * 0.3       # Enemy anthill full health = bad; 0.3weight
+        #     utility += (getCurrPlayerInventory(gameState).getAnthill().captureHealth / 3) * 0.3  # Anthill alive = good; 0.3weight
 
         # ChatGPT
-        # Worker Weights
+        # Worker Weights - 60% of total utility currently
         workerScore = 0
         # Get my workers
-        workers = getAntList(gameState, me, (WORKER,))
-        myInv = getCurrPlayerInventory(gameState)
+        myWorkers = getAntList(gameState, 1 - enemy, (WORKER,))
         tunnels = myInv.getTunnels()
         anthill = myInv.getAnthill()
         foodList = getConstrList(gameState, None, (FOOD,))
+        numWorkers = len(myWorkers)
+        print(f"Workers: {myWorkers}")
+        print(f"Num Workers: {numWorkers}")
 
-        for w in workers:
+        for i, w in enumerate(myWorkers):
             # If carrying food, prioritize returning to tunnel or anthill
             if w.carrying:
-                closestDrop = min([stepsToReach(gameState, w.coords, tunnels[0].coords)],
-                                  [stepsToReach(gameState, w.coords, anthill.coords)])
-                workerScore += 10 - closestDrop[0]   # closer to drop site is better
-            else:
-                # If not carrying, prioritize the closest food
-                closestFood = min([stepsToReach(gameState, w.coords, f.coords) for f in foodList])
-                workerScore += 5 - closestFood   # closer to food is better
+                # Check if at drop site
+                atDropSite = False
+                if anthill and w.coords == anthill.coords:
+                    atDropSite = True
+                elif tunnels and len(tunnels) > 0 and w.coords == tunnels[0].coords:
+                    atDropSite = True
 
-        utility += workerScore * 0.3
+                if atDropSite:
+                    workerScore += 1 / numWorkers
+                    print(f"Worker {i} Score: {workerScore}")
+                    continue
+
+                closestDrop = min(approxDist(w.coords, tunnels[0].coords), 
+                                  approxDist(w.coords, anthill.coords))
+
+                # closer to drop site is better. I don't see distance from food every being over 10.
+                workerScore += ((7 - closestDrop) / 7) / numWorkers
+                print(f"Worker {i} Score: {workerScore}")
+                # If worker is at drop site, good
+                # if w.coords == tunnels[0].coords or w.coords == anthill.coords:
+                #     workerScore += 1 / numWorkers
+            else:
+                if w.coords == (f.coords for f in foodList):
+                    workerScore += 1 / numWorkers
+                    print(f"Worker {i} Score: {workerScore}")
+                    continue
+
+                # If not carrying, prioritize the closest food
+                closestFood = min([approxDist(w.coords, f.coords) for f in foodList])
+                workerScore += ((7 - closestFood) / 7) / numWorkers   # closer to food is better
+                print(f"Worker {i} Score: {workerScore}")
+
+        print(f"Worker Score: {workerScore}")
+        utility += (workerScore * 0.6) # 60% for now
         # Clamp result to [0,1]
-        utility = max(0.0, min(1.0, utility))
+        utility = min(utility, 1.0)
+        print(f"Utility: {utility}")
 
         return utility
 
@@ -153,17 +201,18 @@ class AIPlayer(Player):
     #
     def bestMove(self, nodes):
         # Initialize the best node with the first node's utility
-        bestNodes = []
+        bestNodes = [nodes[0]]
 
         # Iterate through nodes to find the one with the highest utility
         for node in nodes:
             if node.evaluation is None:
                 node.evaluation = self.utility(node.gameState) + node.depth
-            if ((node.evaluation - node.depth >= nodes[0].evaluation) -
-                    (bestNodes[len(bestNodes) - 1].depth if len(bestNodes) != 0 else nodes[0].evaluation)):
+            if (node.evaluation - node.depth > bestNodes[0].evaluation - bestNodes[0].depth):
+                bestNodes = [node]
+            elif (node.evaluation - node.depth == bestNodes[0].evaluation - bestNodes[0].depth):
                 bestNodes.append(node)
 
-        return random.choice(bestNodes) if len(bestNodes) != 0 else nodes[0]
+        return random.choice(bestNodes)
 
 
     ##
@@ -251,7 +300,7 @@ class AIPlayer(Player):
     #Parameters:
     #   currentState - A clone of the current state (GameState)
     #   attackingAnt - The ant currently making the attack (Ant)
-    #   enemyLocation - The Locations of the Enemies that can be attacked (Location[])
+    #   enemyLocations - The Locations of the Enemies that can be attacked (Location[])
     ##
     def getAttack(self, currentState, attackingAnt, enemyLocations):
         #Attack a random enemy.
