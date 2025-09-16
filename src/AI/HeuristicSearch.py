@@ -128,7 +128,7 @@ class AIPlayer(Player):
                 closestFood = min([stepsToReach(gameState, w.coords, f.coords) for f in foodList])
                 workerScore += 5 - closestFood   # closer to food is better
 
-        utility += workerScore * 0.1
+        utility += workerScore * 0.3
         # Clamp result to [0,1]
         utility = max(0.0, min(1.0, utility))
 
@@ -293,5 +293,14 @@ if bestNode.evaluation == 1.9:
     print(f"BestMove test passed. Value was {bestNode.evaluation}, expected 1.9")
 else:
     print(f"BestMove test failed. Value was {bestNode.evaluation}, expected 1.9")
+
+
+print("Beginning utility test")
+gameState = GameState.getBlankState()
+util = AIPlayer(0).utility(gameState)
+if not 0.0 <= util <= 1.0:
+    print(f"ERROR: utility() returned {util}")
+else:
+    print(f"Utility test passed. Value was {util}, expected 0.0")
 
 
