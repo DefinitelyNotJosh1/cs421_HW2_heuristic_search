@@ -149,15 +149,17 @@ class AIPlayer(Player):
     def bestMove(self, nodes):
         # Initialize the best node with the first node's utility
         bestNode = nodes[0]
+        bestNodes = []
 
         # Iterate through nodes to find the one with the highest utility
         for node in nodes:
             if node.evaluation is None:
                 node.evaluation = self.utility(node.gameState) + node.depth
-            if node.evaluation - node.depth > bestNode.evaluation - bestNode.depth:
+            if node.evaluation - node.depth >= bestNode.evaluation - bestNode.depth:
                 bestNode = node
+                bestNodes.append(node)
 
-        return bestNode
+        return random.choice(bestNodes) if len(bestNodes) != 0 else nodes[0]
 
 
     ##
@@ -263,9 +265,6 @@ class AIPlayer(Player):
 
 # UNIT TESTS
 if __name__ == "__main__":
-    from GameState import *
-    from Move import Move
-
     gameState = GameState.getBlankState()
     AI = AIPlayer(0)
 
@@ -281,26 +280,26 @@ if __name__ == "__main__":
     # if not isinstance(move, Move):
     #     print(f"ERROR: getMove() did not return a Move. Got: {move}")
 
-print("Beginning bestMove test")
-nodes = []
-for i in range(10):
-    node = Node(None, None, GameState.getBlankState(), 1, None)
-    nodes.append(node)
-    node.evaluation = i / 10 + node.depth
-bestNode = AIPlayer(0).bestMove(nodes)
+    print("Beginning bestMove test")
+    nodes = []
+    for i in range(10):
+        node = Node(None, None, GameState.getBlankState(), 1, None)
+        nodes.append(node)
+        node.evaluation = i / 10 + node.depth
+    bestNode = AIPlayer(0).bestMove(nodes)
 
-if bestNode.evaluation == 1.9:
-    print(f"BestMove test passed. Value was {bestNode.evaluation}, expected 1.9")
-else:
-    print(f"BestMove test failed. Value was {bestNode.evaluation}, expected 1.9")
+    if bestNode.evaluation == 1.9:
+        print(f"BestMove test passed. Value was {bestNode.evaluation}, expected 1.9")
+    else:
+        print(f"BestMove test failed. Value was {bestNode.evaluation}, expected 1.9")
 
 
-print("Beginning utility test")
-gameState = GameState.getBlankState()
-util = AIPlayer(0).utility(gameState)
-if not 0.0 <= util <= 1.0:
-    print(f"ERROR: utility() returned {util}")
-else:
-    print(f"Utility test passed. Value was {util}, expected 0.0")
+    print("Beginning utility test")
+    gameState = GameState.getBlankState()
+    util = AIPlayer(0).utility(gameState)
+    if not 0.0 <= util <= 1.0:
+        print(f"ERROR: utility() returned {util}")
+    else:
+        print(f"Utility test passed. Value was {util}, expected 0.0")
 
 
