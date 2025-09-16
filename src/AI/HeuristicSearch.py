@@ -16,6 +16,9 @@ from AIPlayerUtils import *
 # and the utility of the state.
 ##
 class Node:
+    # Use slots for memory optimization and fast attribute access - 
+    # HOWEVER  - we can't add new attributes dynamically now. This shouldn't be a problem tho
+    __slots__ = ['parent', 'move', 'gameState', 'depth', 'evaluation']
 
     ## __init__
     #
@@ -25,13 +28,15 @@ class Node:
     #   parent - the parent node
     #   move - the move that led to this state
     #   gameState - the game state
+    #   depth - how many steps to reach from the agent's actual state
     #   utility - the utility of the state
     ##
-    def __init__(self, parent, move, gameState, utility):
+    def __init__(self, parent, move, gameState, depth, evaluation):
         self.parent = parent
         self.move = move
         self.gameState = gameState
-        self.utility = utility
+        self.depth = depth
+        self.evaluation = evaluation
 
 
 
@@ -91,8 +96,12 @@ class AIPlayer(Player):
         utility += (len(getAntList(gameState, enemy, (DRONE,SOLDIER,R_SOLDIER))) / 20) * 0.2 # enemy more soldiers = more win; 0.2weight
 
         # Queen Weights
-        utility += (max(0, getAntList(gameState, me, (QUEEN,))[0].health -
-                        getAntList(gameState, enemy, (QUEEN,))[0].health) / 10) * 0.2        # Queen dying or Enemy Queen Dying = Good and Bad; 0.2weight
+        my_queens = getAntList(gameState, me, (QUEEN,))
+        enemy_queens = getAntList(gameState, enemy, (QUEEN,))
+        
+        if my_queens and enemy_queens:  # Both queens exist
+            utility += (max(0, my_queens[0].health - enemy_queens[0].health) / 10) * 0.2
+
 
         # Anthill Weights
         utility -= (getCurrPlayerInventory(gameState).getAnthill().captureHealth / 3) * 0.3  # Anthill dying = bad; 0.2weight
@@ -138,16 +147,20 @@ class AIPlayer(Player):
     #
     def bestMove(self, nodes):
         # Initialize the best node with the first node's utility
-        if nodes[0].utility is None:
-            nodes[0].utility = self.utility(nodes[0].gameState)
+        highestUtil = 0
+        if nodes[0].evaluation is None:
+            utility = self.utility(nodes[0].gameState)
+            nodes[0].evaluation = utility + nodes[0].depth
+            highestUtil = utility
 
         bestNode = nodes[0]
 
         # Iterate through nodes to find the one with the highest utility
         for node in nodes:
-            if node.utility is None:
-                node.utility = self.utility(node.gameState)
-            if node.utility > bestNode.utility:
+            if node.evaluation is None:
+                node.evaluation = self.utility(node.gameState) + node.depth
+            if node.evaluation - node.depth > highestUtil:
+                highestUtil = node.evaluation - node.depth
                 bestNode = node
 
         return bestNode
@@ -222,8 +235,9 @@ class AIPlayer(Player):
         # list all gamestate objects that will result from making each legal move
         nodes = []
         for move in moves:
-            newNode = Node(currentState, move, getNextState(currentState, move), None)
+            newNode = Node(currentState, move, getNextState(currentState, move), 1, None)
             nodes.append(newNode)
+            # print(f"Node {len(nodes)}: {newNode.evaluation}")
 
         # find the best move
         bestNode = self.bestMove(nodes)
