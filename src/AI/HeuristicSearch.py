@@ -154,7 +154,7 @@ class AIPlayer(Player):
         for node in nodes:
             if node.evaluation is None:
                 node.evaluation = self.utility(node.gameState) + node.depth
-            if node.evaluation - node.depth >= node[0].evaluation - bestNode.depth:
+            if node.evaluation - node.depth >= nodes[0].evaluation - bestNode.depth:
                 bestNodes.append(node)
 
         return random.choice(bestNodes) if len(bestNodes) != 0 else nodes[0]
