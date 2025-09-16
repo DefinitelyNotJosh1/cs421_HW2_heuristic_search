@@ -103,8 +103,9 @@ class AIPlayer(Player):
             utility += (max(0, my_queens[0].health - enemy_queens[0].health) / 10) * 0.2     # Protect the President/Queen; 0.2weight
 
         # Anthill Weights
-        utility -= (gameState.inventories[enemy].getAnthill().captureHealth / 3) * 0.3       # Attacking Enemy Anthill = bad; 0.3weight
-        utility += (getCurrPlayerInventory(gameState).getAnthill().captureHealth / 3) * 0.3  # Anthill alive = good; 0.3weight
+        if gameState.inventories[enemy].getAnthill() or getCurrPlayerInventory(gameState).getAnthill():
+            utility -= (gameState.inventories[enemy].getAnthill().captureHealth / 3) * 0.3       # Enemy anthill full health = bad; 0.3weight
+            utility += (getCurrPlayerInventory(gameState).getAnthill().captureHealth / 3) * 0.3  # Anthill alive = good; 0.3weight
 
         # ChatGPT
         # Worker Weights
@@ -127,7 +128,7 @@ class AIPlayer(Player):
                 closestFood = min([stepsToReach(gameState, w.coords, f.coords) for f in foodList])
                 workerScore += 5 - closestFood   # closer to food is better
 
-        utility += workerScore * 0.2
+        utility += workerScore * 0.1
         # Clamp result to [0,1]
         utility = max(0.0, min(1.0, utility))
 
@@ -265,3 +266,24 @@ class AIPlayer(Player):
     def registerWin(self, hasWon):
         #method templaste, not implemented
         pass
+
+
+# UNIT TESTS
+if __name__ == "__main__":
+    from GameState import *
+    from Move import Move
+
+    gameState = GameState.getBlankState()
+    AI = AIPlayer(0)
+
+    util_range = AI.utility(gameState)
+    if not 0.0 <= util_range <= 1.0:
+        print(f"ERROR: utility() returned {util_range}")
+
+    placements = AI.getPlacement(gameState)
+    if not isinstance(placements, list) or len(placements) == 0:
+        print("ERROR: getPlacement() did not return a valid list of coordinates")
+
+    # move = AI.getMove(gameState)
+    # if not isinstance(move, Move):
+    #     print(f"ERROR: getMove() did not return a Move. Got: {move}")
