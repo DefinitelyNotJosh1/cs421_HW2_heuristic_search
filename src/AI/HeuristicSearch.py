@@ -83,42 +83,48 @@ class AIPlayer(Player):
         # If queen is within the attack range of an enemy ant, that's bad.
         #
         # Constants
+
+       
+
         me = self.playerId
         myInv = getCurrPlayerInventory(gameState)
         enemyInv = getEnemyInv(me, gameState)
         enemy = 1 if me == 0 else 0
-        utility = 0.0                                                                   # base
+        utility = 0.0           
+        # If I win in this game state, return 1
+        if getWinner(gameState) == 1 - enemy:
+            return 1.0                                                        # base
 
-        # Food Weights - 30% of total utility
+        # Food Weights - 90% of total utility
         if myInv.foodCount and enemyInv.foodCount:
             foodScore = myInv.foodCount / 11 # This is on a scale of 0 - 1 - good, now multiply by multiplier
             # foodScore -= (gameState.inventories[enemy].foodCount / 11) # ignore enemy food for now - 
             # in the future do this: start food score at 0.5, divide my food score by 2 and enemy food score by 2,
             # Add my food score and subtract enemy food score. This keeps everything on a scale of 0 - 1.
             print(f"Food Score: {foodScore}")
-            utility += foodScore * 0.4
+            utility += foodScore * 0.9
         # utility += (gameState.inventories[me].foodCount / 11) * 0.3                          # more food = more win; 0.3weight
         # utility -= (gameState.inventories[enemy].foodCount / 11) * 0.3                       # enemy more food /= more win; 0.3weight
 
 
         # If we're under attack (aka there are enemy ants on our side of the board, aka less than 4 in y coord)
         # Max 10% of total utility, not that important
-        attackScore = 0
-        enemyAnts = getAntList(gameState, enemy, (QUEEN, WORKER, DRONE, SOLDIER, R_SOLDIER))
-        attackingAnts = 0
-        if enemyAnts:
-             for ant in enemyAnts:
-                if ant.coords[1] < 4:
-                    attackingAnts += 1
+        # attackScore = 0
+        # enemyAnts = getAntList(gameState, enemy, (QUEEN, WORKER, DRONE, SOLDIER, R_SOLDIER))
+        # attackingAnts = 0
+        # if enemyAnts:
+        #      for ant in enemyAnts:
+        #         if ant.coords[1] < 4:
+        #             attackingAnts += 1
         
-        print(f"attackScore: {attackScore}")
-        attackScore = ((len(enemyAnts)) - attackingAnts / len(enemyAnts)) # If there isn't a significant number of enemy attacking ants, good
-        utility += min(attackScore * 0.1, 0.1) 
+        # print(f"attackScore: {attackScore}")
+        # attackScore = ((len(enemyAnts)) - attackingAnts / len(enemyAnts)) # If there isn't a significant number of enemy attacking ants, good
+        # utility += min(attackScore * 0.1, 0.1) 
 
         # Worker Weights
         # utility += (len(getAntList(gameState, me, (WORKER,))) / 3) * 0.2                     # more soldiers = more win; 0.2weight
         # utility -= (len(getAntList(gameState, enemy, (WORKER,))) / 3) * 0.2                  # enemy more soldiers = more win; 0.2weight
-
+ 
 
         # # Queen Weights
         # my_queens = getAntList(gameState, me, (QUEEN,))
@@ -132,9 +138,9 @@ class AIPlayer(Player):
         #     utility -= (gameState.inventories[enemy].getAnthill().captureHealth / 3) * 0.3       # Enemy anthill full health = bad; 0.3weight
         #     utility += (getCurrPlayerInventory(gameState).getAnthill().captureHealth / 3) * 0.3  # Anthill alive = good; 0.3weight
 
-        # ChatGPT
-        # Worker Weights - 60% of total utility currently
-        workerScore = 0
+        # Worker Weights - 10% of total utility currently
+        # Some help from ChatGPT
+        workerScore = 0.0
         # Get my workers
         myWorkers = getAntList(gameState, 1 - enemy, (WORKER,))
         tunnels = myInv.getTunnels()
@@ -144,43 +150,53 @@ class AIPlayer(Player):
         print(f"Workers: {myWorkers}")
         print(f"Num Workers: {numWorkers}")
 
-        for i, w in enumerate(myWorkers):
-            # If carrying food, prioritize returning to tunnel or anthill
-            if w.carrying:
-                # Check if at drop site
-                atDropSite = False
-                if anthill and w.coords == anthill.coords:
-                    atDropSite = True
-                elif tunnels and len(tunnels) > 0 and w.coords == tunnels[0].coords:
-                    atDropSite = True
+        # Avoid division by zero; if no workers, score remains 0
+        if numWorkers > 0:
+            # Precompute drop sites
+            dropSites = []
+            if anthill:
+                dropSites.append(anthill.coords)
+            if tunnels:
+                dropSites.extend([t.coords for t in tunnels])
 
-                if atDropSite:
-                    workerScore += 1 / numWorkers
-                    print(f"Worker {i} Score: {workerScore}")
-                    continue
+            # Normalization constants keep per-worker contribution in [0,1]
+            maxFoodDist = 8.0
+            maxDropDist = 8.0
 
-                closestDrop = min(approxDist(w.coords, tunnels[0].coords), 
-                                  approxDist(w.coords, anthill.coords))
+            for i, w in enumerate(myWorkers):
+                contrib = 0.0
 
-                # closer to drop site is better. I don't see distance from food every being over 10.
-                workerScore += ((7 - closestDrop) / 7) / numWorkers
-                print(f"Worker {i} Score: {workerScore}")
-                # If worker is at drop site, good
-                # if w.coords == tunnels[0].coords or w.coords == anthill.coords:
-                #     workerScore += 1 / numWorkers
-            else:
-                if w.coords == (f.coords for f in foodList):
-                    workerScore += 1 / numWorkers
-                    print(f"Worker {i} Score: {workerScore}")
-                    continue
+                if w.carrying:
+                    # If at drop site: full contribution
+                    if dropSites and any(w.coords == d for d in dropSites):
+                        contrib = 1.0
+                    else:
+                        # Positive baseline for carrying so picking up is attractive
+                        if dropSites:
+                            closestDrop = min(approxDist(w.coords, d) for d in dropSites)
+                            progressToDrop = max(0.0, min(1.0, 1.0 - (closestDrop / maxDropDist)))
+                        else:
+                            progressToDrop = 0.0
+                        # Baseline 0.5 plus progress up to 1.0 max
+                        contrib = 0.5 + 0.5 * progressToDrop
+                else:
+                    # Not carrying: incentivize getting closer to nearest food, but cap at 0.5
+                    if foodList:
+                        closestFood = min(approxDist(w.coords, f.coords) for f in foodList)
+                        towardFood = max(0.0, min(1.0, 1.0 - (closestFood / maxFoodDist)))
+                        contrib = 0.5 * towardFood
+                    else:
+                        contrib = 0.0
 
-                # If not carrying, prioritize the closest food
-                closestFood = min([approxDist(w.coords, f.coords) for f in foodList])
-                workerScore += ((7 - closestFood) / 7) / numWorkers   # closer to food is better
-                print(f"Worker {i} Score: {workerScore}")
+                # Clamp and average across workers
+                contrib = max(0.0, min(1.0, contrib))
+                workerScore += contrib / numWorkers
+                print(f"Worker {i} contrib: {contrib}")
 
         print(f"Worker Score: {workerScore}")
-        utility += (workerScore * 0.6) # 60% for now
+        # Ensure workerScore in [0,1]
+        workerScore = max(0.0, min(1.0, workerScore))
+        utility += (workerScore * 0.1) # 10% for now
         # Clamp result to [0,1]
         utility = min(utility, 1.0)
         print(f"Utility: {utility}")
