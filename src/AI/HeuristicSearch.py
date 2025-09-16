@@ -16,7 +16,7 @@ from AIPlayerUtils import *
 # and the utility of the state.
 ##
 class Node:
-    # Use slots for memory optimization and fast attribute access - 
+    # Use slots for memory optimization and fast attribute access -
     # HOWEVER  - we can't add new attributes dynamically now. This shouldn't be a problem tho
     __slots__ = ['parent', 'move', 'gameState', 'depth', 'evaluation']
 
@@ -98,19 +98,20 @@ class AIPlayer(Player):
         # Queen Weights
         my_queens = getAntList(gameState, me, (QUEEN,))
         enemy_queens = getAntList(gameState, enemy, (QUEEN,))
-        
+
         if my_queens and enemy_queens:  # Both queens exist
-            utility += (max(0, my_queens[0].health - enemy_queens[0].health) / 10) * 0.2
+            utility += (max(0, my_queens[0].health - enemy_queens[0].health) / 10) * 0.2     # Protect the President/Queen; 0.2weight
 
 
         # Anthill Weights
-        utility -= (getCurrPlayerInventory(gameState).getAnthill().captureHealth / 3) * 0.3  # Anthill dying = bad; 0.2weight
+        utility += (gameState.inventories[enemy].getAnthill().captureHealth / 3) * 0.3       # Attacking Enemy Anthill = bad; 0.3weight
+        utility -= (getCurrPlayerInventory(gameState).getAnthill().captureHealth / 3) * 0.3  # Anthill dying = bad; 0.3weight
 
         # ChatGPT
         # Worker Weights
         workerScore = 0
         # Get my workers
-        workers = getAntList(gameState, gameState.whoseTurn, (WORKER,))
+        workers = getAntList(gameState, me, (WORKER,))
         myInv = getCurrPlayerInventory(gameState)
         tunnels = myInv.getTunnels()
         anthill = myInv.getAnthill()
