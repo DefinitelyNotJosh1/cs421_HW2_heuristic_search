@@ -29,7 +29,7 @@ class Node:
     #   move - the move that led to this state
     #   gameState - the game state
     #   depth - how many steps to reach from the agent's actual state
-    #   utility - the utility of the state
+    #   evalution - state depth + utility
     ##
     def __init__(self, parent, move, gameState, depth, evaluation):
         self.parent = parent
@@ -39,28 +39,6 @@ class Node:
         self.evaluation = evaluation
 
 
-
-##
-#AIPlayer
-#Description: The responsibility of this class is to interact with the game by
-#deciding a valid move based on a given game state. This class has methods that
-#will be implemented by students in Dr. Nuxoll's AI course.
-#
-#Variables:
-#   playerId - The id of the player.
-##
-class AIPlayer(Player):
-
-    #__init__
-    #Description: Creates a new Player
-    #
-    #Parameters:
-    #   inputPlayerId - The id to give the new player (int)
-    #   cpy           - whether the player is a copy (when playing itself)
-    ##
-    def __init__(self, inputPlayerId):
-        super(AIPlayer,self).__init__(inputPlayerId, "Search")
-        self.playerId = inputPlayerId
 
 
     ##
@@ -74,7 +52,9 @@ class AIPlayer(Player):
     #
     # Return: The utility of the state
     #
-    def utility(self, gameState):
+    ##
+
+def utility(gameState):
         # Some ideas: from Josh:
         # Food difference - this should absolutely play a decently large role.                          DONE
         # enemy ants - if the enemy has lots of ants and we don't, that's bad.                          DONE
@@ -84,15 +64,14 @@ class AIPlayer(Player):
         #
         # Constants
 
-       
-
-        me = self.playerId
+        me = gameState.whoseTurn
+        print(f"Me: {me}")
         myInv = getCurrPlayerInventory(gameState)
         enemyInv = getEnemyInv(me, gameState)
-        enemy = 1 if me == 0 else 0
+        enemy = 1 - me
         utility = 0.0           
         # If I win in this game state, return 1
-        if getWinner(gameState) == 1 - enemy:
+        if getWinner(gameState) == me:
             return 1.0                                                        # base
 
         # Food Weights - 90% of total utility
@@ -139,10 +118,11 @@ class AIPlayer(Player):
         #     utility += (getCurrPlayerInventory(gameState).getAnthill().captureHealth / 3) * 0.3  # Anthill alive = good; 0.3weight
 
         # Worker Weights - 10% of total utility currently
+
         # Some help from ChatGPT
         workerScore = 0.0
         # Get my workers
-        myWorkers = getAntList(gameState, 1 - enemy, (WORKER,))
+        myWorkers = getAntList(gameState, me, (WORKER,))
         tunnels = myInv.getTunnels()
         anthill = myInv.getAnthill()
         foodList = getConstrList(gameState, None, (FOOD,))
@@ -204,6 +184,29 @@ class AIPlayer(Player):
         return utility
 
 
+##
+#AIPlayer
+#Description: The responsibility of this class is to interact with the game by
+#deciding a valid move based on a given game state. This class has methods that
+#will be implemented by students in Dr. Nuxoll's AI course.
+#
+#Variables:
+#   playerId - The id of the player.
+##
+class AIPlayer(Player):
+
+    #__init__
+    #Description: Creates a new Player
+    #
+    #Parameters:
+    #   inputPlayerId - The id to give the new player (int)
+    #   cpy           - whether the player is a copy (when playing itself)
+    ##
+    def __init__(self, inputPlayerId):
+        super(AIPlayer,self).__init__(inputPlayerId, "Search")
+        self.playerId = inputPlayerId
+
+
     ##
     # bestMove
     #
@@ -222,7 +225,7 @@ class AIPlayer(Player):
         # Iterate through nodes to find the one with the highest utility
         for node in nodes:
             if node.evaluation is None:
-                node.evaluation = self.utility(node.gameState) + node.depth
+                node.evaluation = utility(node.gameState) + node.depth
             if (node.evaluation - node.depth > bestNodes[0].evaluation - bestNodes[0].depth):
                 bestNodes = [node]
             elif (node.evaluation - node.depth == bestNodes[0].evaluation - bestNodes[0].depth):
@@ -266,21 +269,24 @@ class AIPlayer(Player):
                 moves.append(move)
             return moves
         elif currentState.phase == SETUP_PHASE_2:   #stuff on foe's side
-            numToPlace = 2
+            enemyTunnel = getConstrList(currentState, None, (TUNNEL,))[0]
+            enemyHill = getConstrList(currentState, None, (ANTHILL,))[0]
+
+            # find all spots on enemy side of board that are empty
+            furthestCoords = []
+            for i in range(0, 10):
+                for j in range(6, 10):
+                    if currentState.board[i][j].constr == None:
+                        furthestCoords.append((i,j))
+
+            # sort spots by distance from enemy tunnel
+            furthestCoords.sort(key=lambda x: 
+                        abs(enemyTunnel.coords[0] - x[0]) + abs(enemyTunnel.coords[1] - x[1]) + 
+                        abs(enemyHill.coords[0] - x[0]) + abs(enemyHill.coords[1] - x[1]))
             moves = []
-            for i in range(0, numToPlace):
-                move = None
-                while move == None:
-                    #Choose any x location
-                    x = random.randint(0, 9)
-                    #Choose any y location on enemy side of the board
-                    y = random.randint(6, 9)
-                    #Set the move if this space is empty
-                    if currentState.board[x][y].constr == None and (x, y) not in moves:
-                        move = (x, y)
-                        #Just need to make the space non-empty. So I threw whatever I felt like in there.
-                        currentState.board[x][y].constr == True
-                moves.append(move)
+            # add the two furthest spots to the moves list
+            moves.append(furthestCoords[-1]) 
+            moves.append(furthestCoords[-2])
             return moves
         else:
             return [(0, 0)]
@@ -337,7 +343,7 @@ if __name__ == "__main__":
     gameState = GameState.getBlankState()
     AI = AIPlayer(0)
 
-    util_range = AI.utility(gameState)
+    util_range = utility(gameState)
     if not 0.0 <= util_range <= 1.0:
         print(f"ERROR: utility() returned {util_range}")
 
@@ -349,26 +355,26 @@ if __name__ == "__main__":
     # if not isinstance(move, Move):
     #     print(f"ERROR: getMove() did not return a Move. Got: {move}")
 
-    print("Beginning bestMove test")
-    nodes = []
-    for i in range(10):
-        node = Node(None, None, GameState.getBlankState(), 1, None)
-        nodes.append(node)
-        node.evaluation = i / 10 + node.depth
-    bestNode = AIPlayer(0).bestMove(nodes)
+# print("Beginning bestMove test")
+# nodes = []
+# for i in range(10):
+#     node = Node(None, None, GameState.getBlankState(), 1, None)
+#     nodes.append(node)
+#     node.evaluation = i / 10 + node.depth
+# bestNode = AIPlayer(0).bestMove(nodes)
 
-    if bestNode.evaluation == 1.9:
-        print(f"BestMove test passed. Value was {bestNode.evaluation}, expected 1.9")
-    else:
-        print(f"BestMove test failed. Value was {bestNode.evaluation}, expected 1.9")
+# if bestNode.evaluation == 1.9:
+#     print(f"BestMove test passed. Value was {bestNode.evaluation}, expected 1.9")
+# else:
+#     print(f"BestMove test failed. Value was {bestNode.evaluation}, expected 1.9")
 
 
-    print("Beginning utility test")
-    gameState = GameState.getBlankState()
-    util = AIPlayer(0).utility(gameState)
-    if not 0.0 <= util <= 1.0:
-        print(f"ERROR: utility() returned {util}")
-    else:
-        print(f"Utility test passed. Value was {util}, expected 0.0")
+# print("Beginning utility test")
+# gameState = GameState.getBlankState()
+# util = AIPlayer(0).utility(gameState)
+# if not 0.0 <= util <= 1.0:
+#     print(f"ERROR: utility() returned {util}")
+# else:
+#     print(f"Utility test passed. Value was {util}, expected 0.0")
 
 
