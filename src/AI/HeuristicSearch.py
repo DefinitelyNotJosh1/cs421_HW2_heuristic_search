@@ -81,6 +81,7 @@ def utility(gameState):
             utility += defenseScore * 0.40
                 
 
+
         # attack stuff - 20% of total utility
         # attackScore = attackUtility(gameState, myInv, enemyInv, me) * 0.2
         # if attackScore:
@@ -91,7 +92,7 @@ def utility(gameState):
 
 
 ## foodUtility
-# Description: Calculates the utility of the food situation in a game state 
+# Description: Calculates the utility of the food situation in a game state
 # Includes worker utility
 #
 # Parameters:
@@ -111,7 +112,7 @@ def foodUtility(gameState, myInv, enemyInv, me):
         foodScore -= (enemyInv.foodCount / 11) * 0.5
         print(f"Food Score: {foodScore}")
         utility += foodScore * 0.95
-        
+
 
         # Some help from ChatGPT
         workerScore = 0.0
@@ -127,6 +128,10 @@ def foodUtility(gameState, myInv, enemyInv, me):
         # If we have no workers, score is 0
         if numWorkers == 0:
             return 0.0
+
+        # If we have too many workers, aka not good
+        if numWorkers > 2:
+            utility -= 0.1
 
         # Avoid division by zero; if no workers, score remains 0
         if numWorkers > 0:
@@ -174,7 +179,7 @@ def foodUtility(gameState, myInv, enemyInv, me):
         print(f"Worker Score: {workerScore}")
         # Ensure workerScore in [0,1]
         workerScore = max(0.0, min(1.0, workerScore))
-        utility += (workerScore * 0.05) 
+        utility += (workerScore * 0.05)
         utility = min(utility, 1.0)
         return utility
 
@@ -246,7 +251,7 @@ def bestMove(nodes):
             bestNodes.append(node)
 
     return random.choice(bestNodes)
-    
+
 
 ##
 #AIPlayer
@@ -317,12 +322,12 @@ class AIPlayer(Player):
                         furthestCoords.append((i,j))
 
             # sort spots by distance from enemy tunnel
-            furthestCoords.sort(key=lambda x: 
-                        abs(enemyTunnel.coords[0] - x[0]) + abs(enemyTunnel.coords[1] - x[1]) + 
+            furthestCoords.sort(key=lambda x:
+                        abs(enemyTunnel.coords[0] - x[0]) + abs(enemyTunnel.coords[1] - x[1]) +
                         abs(enemyHill.coords[0] - x[0]) + abs(enemyHill.coords[1] - x[1]))
             moves = []
             # add the two furthest spots to the moves list
-            moves.append(furthestCoords[-1]) 
+            moves.append(furthestCoords[-1])
             moves.append(furthestCoords[-2])
             return moves
         else:
@@ -396,6 +401,7 @@ else:
 
 # UTILITY TEST
 print("| Beginning utility test")
+print("Beginning utility test")
 gameState = GameState.getBlankState()
 util = utility(gameState)
 if not 0.0 <= util <= 1.0:
