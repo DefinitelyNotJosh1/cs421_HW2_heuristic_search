@@ -55,10 +55,7 @@ def utility(gameState):
         # Some ideas: from Josh:
         # Food difference - this should absolutely play a decently large role.                          DONE
         # enemy ants - if the enemy has lots of ants and we don't, that's bad.                          DONE
-        # worker ant distance from food - if worker isn't carrying food and close to food, that's good.
-        # If worker ant is carrying food and close to a hill/tunnel, that's good.
-        # If queen is within the attack range of an enemy ant, that's bad.
-        #
+
         # Constants
         me = gameState.whoseTurn
         myInv = getCurrPlayerInventory(gameState)
@@ -71,7 +68,7 @@ def utility(gameState):
 
         # food stuff - 60% of total utility
         foodScore = foodUtility(gameState, myInv, enemyInv, me)
-        print(f"Food Score: {foodScore}")
+        # print(f"Food Score: {foodScore}")
         if foodScore:
             utility += foodScore * 0.6
 
@@ -87,7 +84,9 @@ def utility(gameState):
         # if attackScore:
         #     utility += attackScore
 
-        print(f"Utility: {utility}")
+        # print(f"Utility: {utility}")
+
+        utility = min(utility, 0.99999999999999999)
         return utility
 
 
@@ -110,8 +109,8 @@ def foodUtility(gameState, myInv, enemyInv, me):
         foodScore = 0.5
         foodScore += (myInv.foodCount / 11) * 0.5 # This is on a scale of 0 - 1 - good, now multiply by multiplier
         foodScore -= (enemyInv.foodCount / 11) * 0.5
-        print(f"Food Score: {foodScore}")
-        utility += foodScore * 0.95
+        # print(f"Food Score: {foodScore}")
+        utility += foodScore * 0.97
 
 
         # Some help from ChatGPT
@@ -122,8 +121,8 @@ def foodUtility(gameState, myInv, enemyInv, me):
         anthill = myInv.getAnthill()
         foodList = getConstrList(gameState, None, (FOOD,))
         numWorkers = len(myWorkers)
-        print(f"Workers: {myWorkers}")
-        print(f"Num Workers: {numWorkers}")
+        # print(f"Workers: {myWorkers}")
+        # print(f"Num Workers: {numWorkers}")
 
         # If we have no workers, score is 0
         if numWorkers == 0:
@@ -174,12 +173,12 @@ def foodUtility(gameState, myInv, enemyInv, me):
                 # Clamp and average across workers
                 contrib = max(0.0, min(1.0, contrib))
                 workerScore += contrib / numWorkers
-                print(f"Worker {i} contrib: {contrib}")
+                # print(f"Worker {i} contrib: {contrib}")
 
-        print(f"Worker Score: {workerScore}")
+        # print(f"Worker Score: {workerScore}")
         # Ensure workerScore in [0,1]
         workerScore = max(0.0, min(1.0, workerScore))
-        utility += (workerScore * 0.05)
+        utility += (workerScore * 0.03)
         utility = min(utility, 1.0)
         return utility
 
@@ -380,11 +379,12 @@ class AIPlayer(Player):
         pass
 
 
-print("-------------------------------- STARTING TESTS -------------------------------- ")
+# Remove print statements for final version
+# print("-------------------------------- STARTING TESTS -------------------------------- ")
 totalTests = 4
 passedTests = 0
 # BEST MOVE TEST
-print("| Beginning bestMove test")
+# print("| Beginning bestMove test")
 nodes = []
 for i in range(10):
     node = Node(None, None, GameState.getBlankState(), 1, None)
@@ -393,44 +393,43 @@ for i in range(10):
 bestNode = bestMove(nodes)
 
 if bestNode.evaluation == 1.9:
-    print(f"| BestMove test passed. Value was {bestNode.evaluation}, expected 1.9")
+    # print(f"| BestMove test passed. Value was {bestNode.evaluation}, expected 1.9")
     passedTests += 1
 else:
     print(f"| BestMove test failed. Value was {bestNode.evaluation}, expected 1.9")
 
 
 # UTILITY TEST
-print("| Beginning utility test")
-print("Beginning utility test")
+# print("| Beginning utility test")
 gameState = GameState.getBlankState()
 util = utility(gameState)
 if not 0.0 <= util <= 1.0:
-    print(f"| ERROR: utility() returned {util}")
+    print(f"| ERROR: utility() returned {util}, expected 0.4")
 else:
-    print(f"| Utility test passed. Value was {util}, expected 0.4")
+    # print(f"| Utility test passed. Value was {util}, expected 0.4")
     passedTests += 1
 
 
 # FOOD UTILITY TEST
-print("| Beginning food utility test")
+# print("| Beginning food utility test")
 gameState = GameState.getBasicState()
 util = foodUtility(gameState, getCurrPlayerInventory(gameState), getEnemyInv(0, gameState), 0)
-if util is not None:
-    print(f"| ERROR: foodUtility() returned {util}")
+if not 0.0 <= util <= 1.0:
+    print(f"| ERROR: foodUtility() returned {util}, expected 0.0")
 else:
-    print(f"| Food utility test passed. Value was {util}, expected None")
+    # print(f"| Food utility test passed. Value was {util}, expected 0.0")
     passedTests += 1
 
 
 # DEFENSE UTILITY TEST
-print("| Beginning defense utility test")
+# print("| Beginning defense utility test")
 gameState = GameState.getBasicState()
 util = defenseUtility(gameState, 0)
 if not 0.0 <= util <= 1.0:
-    print(f"| ERROR: defenseUtility() returned {util}")
+    print(f"| ERROR: defenseUtility() returned {util}, expected 1.0")
 else:
-    print(f"| Defense utility test passed. Value was {util}, expected 1.0")
+    # print(f"| Defense utility test passed. Value was {util}, expected 1.0")
     passedTests += 1
 
-print(f"|----------------------- Passed {passedTests} out of {totalTests} tests --------------------------- ")
-print("-------------------------------- ENDING TESTS -------------------------------- ")
+# print(f"|----------------------- Passed {passedTests} out of {totalTests} tests --------------------------- ")
+# print("-------------------------------- ENDING TESTS -------------------------------- ")
