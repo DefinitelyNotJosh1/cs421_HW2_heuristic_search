@@ -43,6 +43,25 @@ class Node:
         self.depth = depth
         self.evaluation = evaluation
 
+##
+# expandNode
+#
+# Description: Expands a node to include all valid moves from the GameState in the given node
+#
+# Parameters:
+#   node - a node
+#
+# Return: A list of all the new nodes that were created.
+##
+def expandNode(node):
+    moves = listAllLegalMoves(node.gameState)
+    nodes = []
+    for move in moves:
+        newNode = Node(node, move, getNextState(node.gameState, move), node.depth + 1, None)
+        nodes.append(newNode)
+    return nodes
+
+
 
 ##
 # utility
@@ -346,20 +365,26 @@ class AIPlayer(Player):
     #
     #Return: The Move to be made
     ##
+
     def getMove(self, currentState):
-        moves = listAllLegalMoves(currentState)
 
-        # list all gamestate objects that will result from making each legal move
-        nodes = []
-        for move in moves:
-            newNode = Node(currentState, move, getNextState(currentState, move), 1, None)
-            nodes.append(newNode)
-            # print(f"Node {len(nodes)}: {newNode.evaluation}")
+        frontierNodes = []
+        expandedNodes = []
+        rootNode = Node(None, None, currentState, 0, None)
+        frontierNodes.append(rootNode)
 
-        # find the best move
-        bestNode = bestMove(nodes)
+        for i in range(3): # 3 is the depth of the search
+            bestNode = bestMove(frontierNodes)
+            frontierNodes.remove(bestNode)
+            expandedNodes.append(bestNode)
+            newNodes = expandNode(bestNode)
+            frontierNodes.extend(newNodes)
 
+        bestNode = bestMove(frontierNodes)
+        while bestNode.depth > 1:
+            bestNode = bestNode.parent
         return bestNode.move
+
 
     ##
     #getAttack
