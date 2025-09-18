@@ -276,7 +276,7 @@ class AIPlayer(Player):
     #   cpy           - whether the player is a copy (when playing itself)
     ##
     def __init__(self, inputPlayerId):
-        super(AIPlayer,self).__init__(inputPlayerId, "Search Bot")
+        super(AIPlayer,self).__init__(inputPlayerId, "Search Bot1")
         self.playerId = inputPlayerId
 
 
@@ -374,7 +374,7 @@ class AIPlayer(Player):
         #Attack a random enemy.
         # return enemyLocations[0]
         # Gets all the ants on the board
-        enemyID = 0 if self.playerId == 1 else 1
+        enemyID = 1 - self.playerId
         enemyWorkers = getAntList(currentState, enemyID, (WORKER,))
         enemyDrone = getAntList(currentState, enemyID, (DRONE,SOLDIER,R_SOLDIER,QUEEN))
         queen = getAntList(currentState, self.playerId, (QUEEN,))[0]
@@ -384,15 +384,14 @@ class AIPlayer(Player):
         enemyWorker = enemyWorkers[0].coords if enemyWorkers else None
         enemyQueen = getAntList(currentState, enemyID, (QUEEN,))[0].coords
 
-        # Finds nearest ant to the queen if there is one
-        # https://www.geeksforgeeks.org/python/python-closest-pair-to-kth-index-element-in-tuple/
-        nearest = min(coordsList, key=lambda x: abs(x[0] - queen.coords))
+        # Finds nearest ant to the queen if there is one; #ManhattanDistance
+        nearest = min(coordsList, key=lambda coord: approxDist(coord, queen.coords))
 
         if enemyQueen in enemyLocations:
             return enemyQueen
         elif enemyWorker in enemyLocations:
             return enemyWorker
-        elif enemyWorker and coordsList in nearest:
+        elif nearest in enemyLocations:
             return nearest
         else:
             return enemyLocations[0]
