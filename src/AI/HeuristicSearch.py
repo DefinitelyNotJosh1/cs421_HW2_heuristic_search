@@ -82,12 +82,10 @@ def utility(gameState):
         if defenseScore:
             utility += defenseScore * 0.40
 
-
-
         # attack stuff - 20% of total utility
-        # attackScore = attackUtility(gameState, myInv, enemyInv, me) * 0.2
-        # if attackScore:
-        #     utility += attackScore
+        attackScore = attackUtility(gameState, me) * 0.2
+        if attackScore:
+            utility += attackScore
 
         # print(f"Utility: {utility}")
 
@@ -229,6 +227,43 @@ def defenseUtility(gameState, me):
     proximityScore = total / len(threats)
     return max(0.0, min(1.0, proximityScore))
 
+
+## attackUtility
+# Description: Calculates the utility of the defense situation in a game state
+#
+# Parameters:
+#   gameState - a game state
+#   myInv - the inventory of the current player
+#   enemyInv - the inventory of the enemy
+#   me - the id of the current player
+#
+# Return: The utility of the attack situation
+##
+def attackUtility(gameState, me):
+    enemy = 1 - me
+    attackScore = 0.0
+    myAttackAnts = getAntList(gameState, me, (DRONE, SOLDIER, R_SOLDIER, QUEEN))
+    enemyAnts = getAntList(gameState, enemy, (WORKER, DRONE, SOLDIER, R_SOLDIER, QUEEN))
+
+    for ant in myAttackAnts:
+        for enemy in enemyAnts:
+            distance = approxDist(ant.coords, enemy.coords)
+
+            if distance == 1:
+                # Prioritize Queen, then Soldier and RSoldier, and finally Worker
+                if enemy.type == QUEEN:
+                    attackScore += 0.4
+                elif enemy.type == SOLDIER or enemy.type == R_SOLDIER:
+                    attackScore += 0.3
+                elif enemy.type == WORKER:
+                    attackScore += 0.2
+                else:
+                    attackScore += 0.1
+                # If they enemy has low HP
+                if enemy.health <= 1:
+                    attackScore += 0.2
+
+    return max(0.0, min(1.0, attackScore))
 
  ##
 # bestMove
