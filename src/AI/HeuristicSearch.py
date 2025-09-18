@@ -75,15 +75,15 @@ def utility(gameState):
         foodScore = foodUtility(gameState, myInv, enemyInv, me)
         # print(f"Food Score: {foodScore}")
         if foodScore:
-            utility += foodScore * 0.6
+            utility += foodScore * 0.60
 
         # defense stuff - 40% of total utility
         defenseScore = defenseUtility(gameState, me)
         if defenseScore:
-            utility += defenseScore * 0.40
+            utility += defenseScore * 0.30
 
         # attack stuff - 20% of total utility
-        attackScore = attackUtility(gameState, me) * 0.2
+        attackScore = attackUtility(gameState, me) * 0.10
         if attackScore:
             utility += attackScore
 
