@@ -81,7 +81,7 @@ def utility(gameState):
         defenseScore = defenseUtility(gameState, me)
         if defenseScore:
             utility += defenseScore * 0.40
-                
+
 
 
         # attack stuff - 20% of total utility
@@ -372,7 +372,30 @@ class AIPlayer(Player):
     ##
     def getAttack(self, currentState, attackingAnt, enemyLocations):
         #Attack a random enemy.
-        return enemyLocations[0]
+        # return enemyLocations[0]
+        # Gets all the ants on the board
+        enemyID = 0 if self.playerId == 1 else 1
+        enemyWorkers = getAntList(currentState, enemyID, (WORKER,))
+        enemyDrone = getAntList(currentState, enemyID, (DRONE,SOLDIER,R_SOLDIER,QUEEN))
+        queen = getAntList(currentState, self.playerId, (QUEEN,))[0]
+
+        # Gets the coords of all ants
+        coordsList = [ant.coords for ant in enemyDrone]
+        enemyWorker = enemyWorkers[0].coords if enemyWorkers else None
+        enemyQueen = getAntList(currentState, enemyID, (QUEEN,))[0].coords
+
+        # Finds nearest ant to the queen if there is one
+        # https://www.geeksforgeeks.org/python/python-closest-pair-to-kth-index-element-in-tuple/
+        nearest = min(coordsList, key=lambda x: abs(x[0] - queen.coords))
+
+        if enemyQueen in enemyLocations:
+            return enemyQueen
+        elif enemyWorker in enemyLocations:
+            return enemyWorker
+        elif enemyWorker and coordsList in nearest:
+            return nearest
+        else:
+            return enemyLocations[0]
 
     ##
     #registerWin
