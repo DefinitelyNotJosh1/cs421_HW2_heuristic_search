@@ -85,15 +85,18 @@ def utility(gameState):
 
         # Constants
         me = gameState.whoseTurn
+        enemy = 1 - me
         myInv = getCurrPlayerInventory(gameState)
-        enemyInv = getEnemyInv(me, gameState)
+        enemyInv = getEnemyInv(enemy, gameState)
         myAnts = getAntList(gameState, me, (WORKER,DRONE,SOLDIER,R_SOLDIER,QUEEN))
         utility = 0.0
         # If I win in this game state, return 1
         if gameState.phase == PLAY_PHASE:
-            if getWinner(gameState) == me:
+            if (getWinner(gameState) == me or
+                    len(getAntList(gameState, enemy, (QUEEN,))) == 0):
                 return 0.0  # cost 2 win?
-            elif getWinner(gameState) == 1 - me or len(myAnts) == 0:
+            elif (getWinner(gameState) == enemy or
+                  len(myAnts) == 0):
                 return float('inf') # cost 2 lose?
 
 
