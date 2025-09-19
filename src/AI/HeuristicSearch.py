@@ -91,12 +91,14 @@ def utility(gameState):
         myAnts = getAntList(gameState, me, (WORKER,DRONE,SOLDIER,R_SOLDIER,QUEEN))
         utility = 0.0
         # If I win in this game state, return 1
-        if gameState.phase == PLAY_PHASE:
-            if (getWinner(gameState) == me or
-                    len(getAntList(gameState, enemy, (QUEEN,))) == 0):
+        if gameState.phase == PLAY_PHASE:   #v libby trick
+            if getWinner(gameState) == me or \
+                    len(getAntList(gameState, enemy, (QUEEN,))) == 0 or \
+                    myInv.foodCount == 11 or \
+                    enemyInv.getAnthill == 0:
                 return 0.0  # cost 2 win?
-            elif (getWinner(gameState) == enemy or
-                  len(myAnts) == 0):
+            elif getWinner(gameState) == enemy or \
+                  len(myAnts) == 0:
                 return float('inf') # cost 2 lose?
 
 
