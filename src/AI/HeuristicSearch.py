@@ -103,7 +103,7 @@ def utility(gameState):
                     myInv.getAnthill().captureHealth == 0:
                 return float('inf') # cost 2 lose?
 
-
+        # estimate moves for queen, food, capture hill,... maybe soldiers?
 
 
 
