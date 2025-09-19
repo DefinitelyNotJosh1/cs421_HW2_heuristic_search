@@ -5,6 +5,9 @@
 
 import random
 import sys
+
+from src.Constants import R_SOLDIER
+
 sys.path.append("..")  #so other modules can be found in parent dir
 from Player import *
 from Constants import *
@@ -84,31 +87,19 @@ def utility(gameState):
         me = gameState.whoseTurn
         myInv = getCurrPlayerInventory(gameState)
         enemyInv = getEnemyInv(me, gameState)
+        myAnts = getAntList(gameState, me, (WORKER,DRONE,SOLDIER,R_SOLDIER,QUEEN))
         utility = 0.0
         # If I win in this game state, return 1
         if gameState.phase == PLAY_PHASE:
             if getWinner(gameState) == me:
-                return 1.0                                                        # base
-
-        # food stuff - 60% of total utility
-        foodScore = foodUtility(gameState, myInv, enemyInv, me)
-        # print(f"Food Score: {foodScore}")
-        if foodScore:
-            utility += foodScore * 0.6
-
-        # defense stuff - 40% of total utility
-        defenseScore = defenseUtility(gameState, me)
-        if defenseScore:
-            utility += defenseScore * 0.40
-                
+                return 0.0  # cost 2 win?
+            elif getWinner(gameState) == 1 - me or len(myAnts) == 0:
+                return float('inf') # cost 2 lose?
 
 
-        # attack stuff - 20% of total utility
-        # attackScore = attackUtility(gameState, myInv, enemyInv, me) * 0.2
-        # if attackScore:
-        #     utility += attackScore
 
-        # print(f"Utility: {utility}")
+
+
 
         utility = min(utility, 0.99999999999999999)
         return utility
