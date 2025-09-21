@@ -66,57 +66,34 @@ def expandNode(node):
 ##
 # utility
 #
-# Description: Calculates the utility of a given game state on a scale of 0 to 1
+# Description: Heuristic estimate of number of turns until a win (lower is better)
 # Reminder: Do not use the board variable
 #
 # Parameters:
 #   gameState - a game state
 #
-# Return: The utility of the state
+# Return: Estimated remaining turns to win (int, non-negative; large if far)
 #
 ##
 def utility(gameState):
-        # Some ideas: from Josh:
-        # Food difference - this should absolutely play a decently large role.                          DONE
-        # enemy ants - if the enemy has lots of ants and we don't, that's bad.                          DONE
-
-        # Constants
         me = gameState.whoseTurn
         myInv = getCurrPlayerInventory(gameState)
         enemyInv = getEnemyInv(me, gameState)
-        utility = 0.0
-        # If I win in this game state, return 1
-        if gameState.phase == PLAY_PHASE:
-            if getWinner(gameState) == me:
-                return 1.0                                                        # base
+        # Already winning -> zero remaining turns
+        if gameState.phase == PLAY_PHASE and getWinner(gameState) == me:
+            return 0
 
-        # food stuff - 60% of total utility
-        foodScore = foodUtility(gameState, myInv, enemyInv, me)
-        # print(f"Food Score: {foodScore}")
-        if foodScore:
-            utility += foodScore * 0.6
-
-        # defense stuff - 40% of total utility
-        defenseScore = defenseUtility(gameState, me)
-        if defenseScore:
-            utility += defenseScore * 0.40
-                
-
-
-        # attack stuff - 20% of total utility
-        # attackScore = attackUtility(gameState, myInv, enemyInv, me) * 0.2
-        # if attackScore:
-        #     utility += attackScore
-
-        # print(f"Utility: {utility}")
-
-        utility = min(utility, 0.99999999999999999)
-        return utility
+        estTurnsToFoodWin = foodUtility(gameState, myInv, enemyInv, me)
+        print(f"Estimated turns to food win: {estTurnsToFoodWin}")
+        try:
+            return int(estTurnsToFoodWin)
+        except Exception:
+            return 10000
 
 
 ## foodUtility
-# Description: Calculates the utility of the food situation in a game state
-# Includes worker utility
+# Description: Admissibly estimates how many turns it will take to gather
+# 11 food (ie we win)
 #
 # Parameters:
 #   gameState - a game state
@@ -127,84 +104,75 @@ def utility(gameState):
 # Return: The utility of the food situation
 ##
 def foodUtility(gameState, myInv, enemyInv, me):
-    utility = 0.0
-    # Food Weights - 90% of total utility
-    if myInv.foodCount is not None and enemyInv.foodCount is not None:
-        foodScore = 0.5
-        foodScore += (myInv.foodCount / 11) * 0.5 # This is on a scale of 0 - 1 - good, now multiply by multiplier
-        foodScore -= (enemyInv.foodCount / 11) * 0.5
-        # print(f"Food Score: {foodScore}")
-        utility += foodScore * 0.97
+    # Return an estimate of the number of turns (player moves) needed
+    # to reach 11 food by shuttling food with workers.
+    # Uses Manhattan distance and worker movement points as an admissible, fast heuristic.
+    LARGE_TURNS = 10000
+
+    currentFood = myInv.foodCount if myInv and myInv.foodCount is not None else 0
+    foodNeeded = max(0, 11 - currentFood)
+    if foodNeeded == 0:
+        return 0
 
 
-        # Some help from ChatGPT
-        workerScore = 0.0
-        # Get my workers
-        myWorkers = getAntList(gameState, me, (WORKER,))
-        tunnels = myInv.getTunnels()
-        anthill = myInv.getAnthill()
-        foodList = getConstrList(gameState, None, (FOOD,))
-        numWorkers = len(myWorkers)
-        # print(f"Workers: {myWorkers}")
-        # print(f"Num Workers: {numWorkers}")
+    # Gather resources
+    workers = getAntList(gameState, me, (WORKER,))
+    if workers is None or len(workers) == 0 or len(workers) > 1:
+        return LARGE_TURNS
 
-        # If we have no workers, score is 0
-        if numWorkers == 0:
-            return 0.0
+    foods = getConstrList(gameState, None, (FOOD,))
+    if foods is None or len(foods) == 0:
+        return LARGE_TURNS
 
-        # If we have too many workers, aka not good
-        if numWorkers > 2:
-            utility -= 0.1
+    dropSites = []
+    anthill = myInv.getAnthill() if myInv else None
+    tunnels = myInv.getTunnels() if myInv else []
+    if anthill is not None:
+        dropSites.append(anthill.coords)
+    if tunnels:
+        dropSites.extend([t.coords for t in tunnels])
+    if len(dropSites) == 0:
+        return LARGE_TURNS
 
-        # Avoid division by zero; if no workers, score remains 0
-        if numWorkers > 0:
-            # Precompute drop sites
-            dropSites = []
-            if anthill:
-                dropSites.append(anthill.coords)
-            if tunnels:
-                dropSites.extend([t.coords for t in tunnels])
+    movementPerTurn = UNIT_STATS[WORKER][MOVEMENT]
+    if movementPerTurn <= 0:
+        return LARGE_TURNS
 
-            # Normalization constants keep per-worker contribution in [0,1]
-            maxFoodDist = 8.0
-            maxDropDist = 8.0
 
-            for i, w in enumerate(myWorkers):
-                contrib = 0.0
+    def turns_for_distance(d):
+        return (d + movementPerTurn - 1) // movementPerTurn
 
-                if w.carrying:
-                    # If at drop site: full contribution
-                    if dropSites and any(w.coords == d for d in dropSites):
-                        contrib = 1.0
-                    else:
-                        # Positive baseline for carrying so picking up is attractive
-                        if dropSites:
-                            closestDrop = min(approxDist(w.coords, d) for d in dropSites)
-                            progressToDrop = max(0.0, min(1.0, 1.0 - (closestDrop / maxDropDist)))
-                        else:
-                            progressToDrop = 0.0
-                        # Baseline 0.5 plus progress up to 1.0 max
-                        contrib = 0.5 + 0.5 * progressToDrop
-                else:
-                    # Not carrying: incentivize getting closer to nearest food, but cap at 0.5
-                    if foodList:
-                        closestFood = min(approxDist(w.coords, f.coords) for f in foodList)
-                        towardFood = max(0.0, min(1.0, 1.0 - (closestFood / maxFoodDist)))
-                        contrib = 0.5 * towardFood
-                    else:
-                        contrib = 0.0
+    # Compute a conservative cycle time starting from a drop site (drop -> food -> drop)
+    minDropToFood = min(
+        approxDist(d, f.coords)
+        for d in dropSites
+        for f in foods
+    )
+    cycleTurns = turns_for_distance(minDropToFood + minDropToFood)
 
-                # Clamp and average across workers
-                contrib = max(0.0, min(1.0, contrib))
-                workerScore += contrib / numWorkers
-                # print(f"Worker {i} contrib: {contrib}")
+    # For each worker, estimate time to first delivery (if carrying, just to nearest drop)
+    firstDeliveryTimes = []
+    for w in workers:
+        if w.carrying:
+            toDrop = min(approxDist(w.coords, d) for d in dropSites)
+            firstDeliveryTimes.append(turns_for_distance(toDrop))
+        else:
+            # nearest food, then from that food to nearest drop
+            nearestFood = min(foods, key=lambda f: approxDist(w.coords, f.coords))
+            toFood = approxDist(w.coords, nearestFood.coords)
+            toDropFromFood = min(approxDist(nearestFood.coords, d) for d in dropSites)
+            firstDeliveryTimes.append(turns_for_distance(toFood) + turns_for_distance(toDropFromFood))
 
-        # print(f"Worker Score: {workerScore}")
-        # Ensure workerScore in [0,1]
-        workerScore = max(0.0, min(1.0, workerScore))
-        utility += (workerScore * 0.03)
-        utility = min(utility, 1.0)
-        return utility
+    # Schedule deliveries greedily across workers to fulfill foodNeeded
+    nextAvailable = list(firstDeliveryTimes)
+    # If cycleTurns is zero (edge case), subsequent deliveries are immediate
+    lastDeliveryTime = 0
+    for _ in range(foodNeeded):
+        i = min(range(len(nextAvailable)), key=lambda idx: nextAvailable[idx])
+        lastDeliveryTime = nextAvailable[i]
+        nextAvailable[i] = nextAvailable[i] + cycleTurns
+
+    return int(lastDeliveryTime)
 
 
 ## defenseUtility
@@ -261,18 +229,18 @@ def defenseUtility(gameState, me):
 # Return: The state with the highest utility
 #
 def bestMove(nodes):
-    # Initialize the best node with the first node's utility
-    bestNodes = [nodes[0]]
-
-    # Iterate through nodes to find the one with the highest utility
+    # A*-style: choose node with minimal f = g(depth) + h(estimated turns)
+    bestNodes = []
+    bestF = None
     for node in nodes:
         if node.evaluation is None:
             node.evaluation = utility(node.gameState) + node.depth
-        if (node.evaluation - node.depth > bestNodes[0].evaluation - bestNodes[0].depth):
+        f = node.evaluation
+        if bestF is None or f < bestF:
+            bestF = f
             bestNodes = [node]
-        elif (node.evaluation - node.depth == bestNodes[0].evaluation - bestNodes[0].depth):
+        elif f == bestF:
             bestNodes.append(node)
-
     return random.choice(bestNodes)
 
 
@@ -429,25 +397,25 @@ else:
     print(f"| BestMove test failed. Value was {bestNode.evaluation}, expected 1.9")
 
 
-# UTILITY TEST
+# UTILITY TEST (now returns an estimated non-negative integer turns)
 # print("| Beginning utility test")
 gameState = GameState.getBlankState()
 util = utility(gameState)
-if not 0.0 <= util <= 1.0:
-    print(f"| ERROR: utility() returned {util}, expected 0.4")
+if not (isinstance(util, int) and util >= 0):
+    print(f"| ERROR: utility() returned {util}, expected non-negative int")
 else:
-    # print(f"| Utility test passed. Value was {util}, expected 0.4")
+    # print(f"| Utility test passed. Value was {util} (turns)")
     passedTests += 1
 
 
-# FOOD UTILITY TEST
+# FOOD UTILITY TEST (now returns turn estimate, non-negative integer or LARGE)
 # print("| Beginning food utility test")
 gameState = GameState.getBasicState()
-util = foodUtility(gameState, getCurrPlayerInventory(gameState), getEnemyInv(0, gameState), 0)
-if not 0.0 <= util <= 1.0:
-    print(f"| ERROR: foodUtility() returned {util}, expected 0.0")
+util_turns = foodUtility(gameState, getCurrPlayerInventory(gameState), getEnemyInv(0, gameState), 0)
+if not (isinstance(util_turns, int) and util_turns >= 0):
+    print(f"| ERROR: foodUtility() returned {util_turns}, expected non-negative int")
 else:
-    # print(f"| Food utility test passed. Value was {util}, expected 0.0")
+    # print(f"| Food utility test passed. Value was {util_turns} (turns)")
     passedTests += 1
 
 
