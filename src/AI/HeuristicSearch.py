@@ -106,6 +106,26 @@ def utility(gameState):
         # estimate moves for queen, food, capture hill,... maybe soldiers?
 
 
+        # food stuff - 60% of total utility
+        foodScore = foodUtility(gameState, myInv, enemyInv, me)
+        # print(f"Food Score: {foodScore}")
+        if foodScore:
+            utility += foodScore * 0.6
+
+        # defense stuff - 40% of total utility
+        defenseScore = defenseUtility(gameState, me)
+        if defenseScore:
+            utility += defenseScore * 0.40
+
+
+
+        # attack stuff - 20% of total utility
+        # attackScore = attackUtility(gameState, myInv, enemyInv, me) * 0.2
+        # if attackScore:
+        #     utility += attackScore
+
+        # print(f"Utility: {utility}")
+
 
 
         utility = min(utility, 0.99999999999999999)
