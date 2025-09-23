@@ -101,7 +101,7 @@ def utility(gameState):
                   len(myAnts) == 0 or \
                     enemyInv.foodCount == 11 or \
                     myInv.getAnthill().captureHealth == 0:
-                return float('inf') # cost 2 lose?
+                return float(-11.0) # cost 2 lose?
 
         # estimate moves for queen, food, capture hill,... maybe soldiers?
 
@@ -115,7 +115,7 @@ def utility(gameState):
         # defense stuff - 40% of total utility
         defenseScore = defenseUtility(gameState, me)
         if defenseScore:
-            utility += defenseScore * 0.40
+            utility += defenseScore * 0.4
 
 
 
@@ -128,7 +128,7 @@ def utility(gameState):
 
 
 
-        utility = min(utility, 0.99999999999999999)
+        utility = (1.0 - utility)   # * 8.7
         return utility
 
 
@@ -286,7 +286,7 @@ def bestMove(nodes):
     for node in nodes:
         if node.evaluation is None:
             node.evaluation = utility(node.gameState) + node.depth
-        if (node.evaluation - node.depth > bestNodes[0].evaluation - bestNodes[0].depth):
+        if (node.evaluation - node.depth < bestNodes[0].evaluation - bestNodes[0].depth):
             bestNodes = [node]
         elif (node.evaluation - node.depth == bestNodes[0].evaluation - bestNodes[0].depth):
             bestNodes.append(node)
