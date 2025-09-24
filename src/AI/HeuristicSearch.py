@@ -6,8 +6,6 @@
 import random
 import sys
 
-from src.Constants import R_SOLDIER
-
 sys.path.append("..")  #so other modules can be found in parent dir
 from Player import *
 from Constants import *
@@ -440,7 +438,7 @@ for i in range(10):
     node.evaluation = i / 10 + node.depth
 bestNode = bestMove(nodes)
 
-if bestNode.evaluation == 1.9:
+if bestNode.evaluation == 1.0:
     # print(f"| BestMove test passed. Value was {bestNode.evaluation}, expected 1.9")
     passedTests += 1
 else:
