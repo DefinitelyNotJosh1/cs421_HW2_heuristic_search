@@ -98,7 +98,7 @@ def utility(gameState):
                   len(myAnts) == 0 or \
                     enemyInv.foodCount == 11 or \
                     myInv.getAnthill().captureHealth == 0:
-                return float(-11.0) # cost 2 lose?
+                return float('-inf') # cost 2 lose? like the best thing ever
 
         # estimate moves for queen, food, capture hill,... maybe soldiers?
 
@@ -125,7 +125,7 @@ def utility(gameState):
 
 
 
-        utility = (1.0 - utility)   # * 8.7
+        utility = (1.0 - utility) # * 8.7
         return utility
 
 
@@ -310,7 +310,7 @@ class AIPlayer(Player):
     #   cpy           - whether the player is a copy (when playing itself)
     ##
     def __init__(self, inputPlayerId):
-        super(AIPlayer,self).__init__(inputPlayerId, "Search Bot")
+        super(AIPlayer,self).__init__(inputPlayerId, "Goated Search Bot")
         self.playerId = inputPlayerId
 
 
@@ -417,7 +417,7 @@ class AIPlayer(Player):
     ##
     #registerWin
     #
-    # This agent doens't learn
+    # This agent doesn't learn
     #
     def registerWin(self, hasWon):
         #method templaste, not implemented
