@@ -99,7 +99,7 @@ def utility(gameState):
                   len(myAnts) == 0 or \
                     enemyInv.foodCount == 11 or \
                     myInv.getAnthill().captureHealth == 0:
-                return float(-11.0) # cost 2 lose?
+                return float(100.0) # float('inf') # cost 2 lose? / best thing ever
 
         # estimate moves for queen, food, capture hill,... maybe soldiers?
 
@@ -126,7 +126,7 @@ def utility(gameState):
 
 
 
-        utility = (1.0 - utility)   # * 8.7
+        utility = (1.0 - utility) #* 8.7
         return utility
 
 
