@@ -110,17 +110,17 @@ def utility(gameState):
         if foodScore:
             utility += foodScore * 0.6
 
-        # defense stuff - 40% of total utility
+        # defense stuff - 30% of total utility
         defenseScore = defenseUtility(gameState, me)
         if defenseScore:
-            utility += defenseScore * 0.4
+            utility += defenseScore * 0.3
 
 
 
-        # attack stuff - 20% of total utility
-        # attackScore = attackUtility(gameState, myInv, enemyInv, me) * 0.2
-        # if attackScore:
-        #     utility += attackScore
+        # attack stuff - 10% of total utility
+        attackScore = attackUtility(gameState, myInv, enemyInv, me) * 0.1
+        if attackScore:
+            utility += attackScore
 
         # print(f"Utility: {utility}")
 
@@ -262,6 +262,48 @@ def defenseUtility(gameState, me):
         total += score
 
     proximityScore = total / len(threats)
+    return max(0.0, min(1.0, proximityScore))
+
+
+## attackUtility
+# Description: Calculates the utility of the defense situation in a game state
+#
+# Parameters:
+#   gameState - a game state
+#   myInv - the inventory of the current player
+#   enemyInv - the inventory of the enemy
+#   me - the id of the current player
+#
+# Return: The utility of the attack situation
+##
+def attackUtility(gameState, myInv, enemyInv, me):
+    enemy = 1 - me
+    def on_enemy_side(coords):
+        y = coords[1]
+        return y > 4
+
+    # Enemy ants on the enemy side
+    attackable = [a for a in getAntList(gameState, enemy, (QUEEN, WORKER, DRONE, SOLDIER, R_SOLDIER)) if on_enemy_side(a.coords)]
+    # My attack-capable ants
+    attackers = getAntList(gameState, me, (DRONE, SOLDIER, R_SOLDIER))
+
+    # If there are no enemy's, attack is perfect
+    if not attackable:
+        return 1.0
+    # If there are threats but no attackers, attackable is bad
+    if not attackers:
+        return 0.0
+
+    # Encourage attackers to be close to threats
+    # 0 distance -> 1.0 score; distance >= maxDist -> 0.1 score
+    maxDist = 10.0
+    total = 0.0
+    for t in attackable:
+        minDist = min(approxDist(d.coords, t.coords) for d in attackers)
+        score = 1.0 - min(minDist / maxDist, 10.0)
+        total += score
+
+    proximityScore = total / len(attackable) if total != 0 or len(attackable) != 0 else 0.0
     return max(0.0, min(1.0, proximityScore))
 
 
