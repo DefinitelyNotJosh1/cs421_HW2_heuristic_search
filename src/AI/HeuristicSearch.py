@@ -113,12 +113,12 @@ def utility(gameState):
         # defense stuff - 30% of total utility
         defenseScore = defenseUtility(gameState, me)
         if defenseScore:
-            utility += defenseScore * 0.3
+            utility += defenseScore * 0.2
 
 
 
         # attack stuff - 10% of total utility
-        attackScore = attackUtility(gameState, myInv, enemyInv, me) * 0.1
+        attackScore = attackUtility(gameState, myInv, enemyInv, me) * 0.2
         if attackScore:
             utility += attackScore
 
@@ -287,6 +287,13 @@ def attackUtility(gameState, myInv, enemyInv, me):
     # My attack-capable ants
     attackers = getAntList(gameState, me, (DRONE, SOLDIER, R_SOLDIER))
 
+    enemyAnthill = enemyInv.getAnthill()
+    if enemyAnthill:
+        enemyAnthill = enemyAnthill.coords
+    else:
+        return 1.0
+
+
     # If there are no enemy's, attack is perfect
     if not attackable:
         return 1.0
@@ -299,7 +306,7 @@ def attackUtility(gameState, myInv, enemyInv, me):
     maxDist = 10.0
     total = 0.0
     for t in attackable:
-        minDist = min(approxDist(d.coords, t.coords) for d in attackers)
+        minDist = approxDist(enemyAnthill, t.coords) #min(approxDist(d.coords, t.coords) for d in attackers)
         score = 1.0 - min(minDist / maxDist, 10.0)
         total += score
 
@@ -455,7 +462,7 @@ class AIPlayer(Player):
     ##
     def getAttack(self, currentState, attackingAnt, enemyLocations):
         #Attack a random enemy.
-        return enemyLocations[0]
+        return enemyLocations[random.randint(0, len(enemyLocations) - 1)]
 
     ##
     #registerWin
