@@ -1,4 +1,4 @@
-# Heuristic Search AI, HW 2 CS-421
+# Heuristic Search AI, HW 2B CS-421
 # Authors:
 # - Christopher Yee
 # - Joshua Krasnogorov
@@ -78,8 +78,8 @@ def expandNode(node):
 ##
 def utility(gameState):
         # Some ideas: from Josh:
-        # Food difference - this should absolutely play a decently large role.                          DONE
-        # enemy ants - if the enemy has lots of ants and we don't, that's bad.                          DONE
+        # Food difference - this should absolutely play a decently large role.
+        # enemy ants - if the enemy has lots of ants and we don't, that's bad.
 
         # Constants
         me = gameState.whoseTurn
@@ -112,15 +112,13 @@ def utility(gameState):
 
         # defense stuff - 30% of total utility
         defenseScore = defenseUtility(gameState, me)
-        if defenseScore:
-            utility += defenseScore * 0.2
-
-
-
         # attack stuff - 10% of total utility
-        attackScore = attackUtility(gameState, myInv, enemyInv, me) * 0.2
-        if attackScore:
-            utility += attackScore
+        attackScore = attackUtility(gameState, myInv, enemyInv, me)
+
+        if defenseScore > attackScore:
+            utility += defenseScore * 0.4
+        else:
+            utility += attackScore * 0.4
 
         # print(f"Utility: {utility}")
 
@@ -278,6 +276,8 @@ def defenseUtility(gameState, me):
 ##
 def attackUtility(gameState, myInv, enemyInv, me):
     enemy = 1 - me
+    maxDist = 10.0
+    total = 0.0
     def on_enemy_side(coords):
         y = coords[1]
         return y > 4
@@ -293,20 +293,31 @@ def attackUtility(gameState, myInv, enemyInv, me):
     else:
         return 1.0
 
+    enemyQueen = getAntList(gameState, enemy, (QUEEN,))[0]
+    if enemyQueen:
+        enemyQueen = enemyQueen.coords
+    else:
+        return 1.0
 
     # If there are no enemy's, attack is perfect
     if not attackable:
-        return 1.0
+        for t in attackers:
+            # minDist = approxDist(enemyAnthill, t.coords) # min(approxDist(d.coords, t.coords) for d in attackers)
+            minDist = approxDist(enemyQueen, t.coords)
+            score = 1.0 - min(minDist / maxDist, 10.0)
+            total += score
+
+        proximityScore = total / len(attackers) if total != 0 or len(attackers) != 0 else 0.0
+        return max(0.0, min(1.0, proximityScore))
     # If there are threats but no attackers, attackable is bad
     if not attackers:
         return 0.0
 
     # Encourage attackers to be close to threats
     # 0 distance -> 1.0 score; distance >= maxDist -> 0.1 score
-    maxDist = 10.0
-    total = 0.0
     for t in attackable:
-        minDist = approxDist(enemyAnthill, t.coords) #min(approxDist(d.coords, t.coords) for d in attackers)
+        minDist = approxDist(enemyAnthill, t.coords) # min(approxDist(d.coords, t.coords) for d in attackers)
+        # minDist = approxDist(enemyQueen, t.coords)
         score = 1.0 - min(minDist / maxDist, 10.0)
         total += score
 
